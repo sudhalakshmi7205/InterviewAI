@@ -1,4 +1,4 @@
-import { generateFeedbackReport } from '@/lib/gemini'
+import { generateFeedbackReport } from '@/lib/groq'
 import { supabase } from '@/lib/supabase'
 
 export const maxDuration = 60;

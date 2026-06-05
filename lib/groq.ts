@@ -1,6 +1,6 @@
-import { GoogleGenAI } from '@google/genai';
+import Groq from "groq-sdk";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function getInterviewerResponse(
   messages: { role: string; content: string }[],
@@ -17,25 +17,27 @@ Rules:
 - Keep your questions concise and professional.
 - After exactly 5 candidate responses, say only this: "That concludes our interview. Thank you for your time."`;
 
-  const contents = messages.map(m => ({
-    role: m.role === 'interviewer' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }));
-
-  if (contents.length === 0) {
-    contents.push({ role: 'user', parts: [{ text: 'Hello! I am ready to start the interview. Please ask your first question.' }] });
+  const chatMessages: any[] = [{ role: 'system', content: systemInstruction }];
+  
+  if (messages.length === 0) {
+    chatMessages.push({ role: 'user', content: 'Hello! I am ready to start the interview. Please ask your first question.' });
+  } else {
+    for (const msg of messages) {
+        chatMessages.push({
+            role: msg.role === 'interviewer' ? 'assistant' : 'user',
+            content: msg.content
+        });
+    }
   }
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-1.5-flash',
-    contents: contents,
-    config: {
-      systemInstruction: systemInstruction,
-      maxOutputTokens: 500,
-    }
+  const completion = await groq.chat.completions.create({
+    messages: chatMessages,
+    model: "llama3-8b-8192",
+    temperature: 0.7,
+    max_tokens: 500,
   });
-  
-  return response.text || '';
+
+  return completion.choices[0]?.message?.content || '';
 }
 
 export async function generateFeedbackReport(
@@ -77,16 +79,17 @@ Use a scale of 1-10 for overall_score.
 Transcript:
 ${formattedTranscript}`;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-1.5-flash',
-    contents: prompt,
-    config: {
-      systemInstruction: systemInstruction,
-      responseMimeType: 'application/json',
-      maxOutputTokens: 2000,
-    }
+  const completion = await groq.chat.completions.create({
+    messages: [
+      { role: 'system', content: systemInstruction },
+      { role: 'user', content: prompt }
+    ],
+    model: "llama3-70b-8192",
+    temperature: 0.2,
+    max_tokens: 2000,
+    response_format: { type: "json_object" }
   });
-  
-  const text = response.text || '{}';
+
+  const text = completion.choices[0]?.message?.content || '{}';
   return JSON.parse(text);
 }

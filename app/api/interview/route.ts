@@ -1,4 +1,4 @@
-import { getInterviewerResponse } from '@/lib/gemini'
+import { getInterviewerResponse } from '@/lib/groq'
 import { supabase } from '@/lib/supabase'
 import { currentUser } from '@clerk/nextjs/server'
 
@@ -28,10 +28,6 @@ export async function POST(req: Request) {
   const { sessionId, messages, role, difficulty } = await req.json()
   
   try {
-    if (!process.env.GEMINI_API_KEY?.startsWith('AIzaSy')) {
-      return Response.json({ error: `Vercel is STILL using the old key! The key inside Vercel currently starts with: ${process.env.GEMINI_API_KEY?.substring(0, 5)}... Please double check Vercel Environment Variables and Redeploy!` }, { status: 500 });
-    }
-    
     const reply = await getInterviewerResponse(messages, role, difficulty)
     
     // Save AI message to database
