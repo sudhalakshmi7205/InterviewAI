@@ -1,6 +1,6 @@
 'use server'
 
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
 export async function createSession() {
@@ -8,7 +8,20 @@ export async function createSession() {
   if (!userId) throw new Error('Unauthorized');
   
   // Get user role and limits
-  const { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
+  let { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
+  
+  // FALLBACK: If the Clerk webhook failed to create the user in Supabase, create it now!
+  if (!user) {
+    const clerkUser = await currentUser();
+    const primaryEmail = clerkUser?.emailAddresses[0]?.emailAddress || 'unknown@example.com';
+    const { data: newUser, error: userErr } = await supabase.from('users').insert({
+      id: userId,
+      email: primaryEmail,
+    }).select().single();
+    
+    if (userErr) throw new Error(`Webhook failed, and fallback creation failed: ${userErr.message}`);
+    user = newUser;
+  }
   
   if (user?.plan === 'free' && (user?.sessions_used || 0) >= 3) {
     throw new Error('LIMIT_REACHED');
