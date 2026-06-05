@@ -2,6 +2,8 @@ import { getInterviewerResponse } from '@/lib/claude'
 import { supabase } from '@/lib/supabase'
 import { currentUser } from '@clerk/nextjs/server'
 
+export const maxDuration = 60;
+
 const rateLimitMap = new Map<string, number[]>()
 
 function isRateLimited(userId: string): boolean {

@@ -14,12 +14,16 @@ export async function createSession() {
     throw new Error('LIMIT_REACHED');
   }
   
-  const { data: session } = await supabase.from('sessions').insert({
+  const { data: session, error } = await supabase.from('sessions').insert({
     user_id: userId,
     role: user?.target_role || 'Software Engineer',
     difficulty: 'mid'
   }).select().single();
   
+  if (error) {
+    console.error('Supabase error creating session:', error);
+    throw new Error(`Supabase error: ${error.message}`);
+  }
   if (!session) throw new Error('Failed to create session');
   
   return session;

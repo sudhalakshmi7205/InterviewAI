@@ -1,6 +1,8 @@
 import { generateFeedbackReport } from '@/lib/claude'
 import { supabase } from '@/lib/supabase'
 
+export const maxDuration = 60;
+
 export async function POST(req: Request) {
   const { sessionId } = await req.json()
   
