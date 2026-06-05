@@ -9,9 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "@clerk/nextjs": "latest",
+    "@stripe/stripe-js": "latest",
+    "@supabase/supabase-js": "latest",
+    "@vercel/analytics": "^2.0.1",
     "next": "16.2.7",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "stripe": "latest"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
