@@ -79,7 +79,7 @@ export default async function DashboardPage() {
       <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-10 bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <h1 className="text-2xl font-bold text-gray-900">Welcome back, {user.firstName}</h1>
-          <UserButton afterSignOutUrl="/" />
+          <UserButton />
         </div>
         
         {/* Stats row */}
