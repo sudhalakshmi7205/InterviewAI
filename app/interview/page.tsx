@@ -184,7 +184,10 @@ export default function InterviewPage() {
           difficulty: newSession.difficulty
         })
       });
-      if (!res.ok) throw new Error('API Error');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'API Error');
+      }
       const data = await res.json();
       setMessages([{ role: 'interviewer', content: data.reply }]);
       if (voiceEnabled) speakText(data.reply);
@@ -220,7 +223,10 @@ export default function InterviewPage() {
           difficulty: session.difficulty
         })
       });
-      if (!res.ok) throw new Error('API Error');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'API Error');
+      }
       const data = await res.json();
       
       setMessages([...newMessages, { role: 'interviewer', content: data.reply }]);
