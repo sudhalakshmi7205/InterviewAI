@@ -193,7 +193,7 @@ export default function InterviewPage() {
         router.push('/dashboard');
       } else {
         console.error(e);
-        alert('Something went wrong. Please try again.');
+        alert(`Error starting interview: ${e.message || 'Please try again'}`);
       }
     } finally {
       setIsLoading(false);
@@ -236,7 +236,7 @@ export default function InterviewPage() {
       }
     } catch (e) {
       console.error(e);
-      alert('Something went wrong. Please try again.');
+      alert(`Error starting interview: ${e.message || 'Please try again'}`);
     } finally {
       setIsLoading(false);
     }

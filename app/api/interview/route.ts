@@ -27,29 +27,34 @@ export async function POST(req: Request) {
 
   const { sessionId, messages, role, difficulty } = await req.json()
   
-  const reply = await getInterviewerResponse(messages, role, difficulty)
-  
-  // Save AI message to database
-  await supabase.from('messages').insert({
-    session_id: sessionId,
-    role: 'interviewer',
-    content: reply
-  })
-  
-  // Check if interview is over
-  const isComplete = reply.includes('That concludes');
-  if (isComplete) {
-    await supabase.from('sessions').update({
-      status: 'completed',
-      ended_at: new Date().toISOString()
-    }).eq('id', sessionId)
+  try {
+    const reply = await getInterviewerResponse(messages, role, difficulty)
     
-    // Increment sessions_used safely
-    const { data: userData } = await supabase.from('users').select('sessions_used').eq('id', user.id).single();
-    await supabase.from('users').update({
-      sessions_used: (userData?.sessions_used || 0) + 1
-    }).eq('id', user.id);
+    // Save AI message to database
+    await supabase.from('messages').insert({
+      session_id: sessionId,
+      role: 'interviewer',
+      content: reply
+    })
+    
+    // Check if interview is over
+    const isComplete = reply.includes('That concludes');
+    if (isComplete) {
+      await supabase.from('sessions').update({
+        status: 'completed',
+        ended_at: new Date().toISOString()
+      }).eq('id', sessionId)
+      
+      // Increment sessions_used safely
+      const { data: userData } = await supabase.from('users').select('sessions_used').eq('id', user.id).single();
+      await supabase.from('users').update({
+        sessions_used: (userData?.sessions_used || 0) + 1
+      }).eq('id', user.id);
+    }
+    
+    return Response.json({ reply, isComplete })
+  } catch (err: any) {
+    console.error("Claude API Error:", err);
+    return Response.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
-  
-  return Response.json({ reply, isComplete })
 }
