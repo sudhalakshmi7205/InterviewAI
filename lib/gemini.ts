@@ -22,6 +22,10 @@ Rules:
     parts: [{ text: m.content }]
   }));
 
+  if (contents.length === 0) {
+    contents.push({ role: 'user', parts: [{ text: 'Hello! I am ready to start the interview. Please ask your first question.' }] });
+  }
+
   const response = await ai.models.generateContent({
     model: 'gemini-1.5-flash',
     contents: contents,
