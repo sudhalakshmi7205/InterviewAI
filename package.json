@@ -11,6 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
     "@clerk/nextjs": "latest",
+    "@google/genai": "^2.8.0",
     "@stripe/stripe-js": "latest",
     "@supabase/supabase-js": "latest",
     "@vercel/analytics": "^2.0.1",

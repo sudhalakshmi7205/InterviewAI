@@ -1,4 +1,4 @@
-import { getInterviewerResponse } from '@/lib/claude'
+import { getInterviewerResponse } from '@/lib/gemini'
 import { supabase } from '@/lib/supabase'
 import { currentUser } from '@clerk/nextjs/server'
 
