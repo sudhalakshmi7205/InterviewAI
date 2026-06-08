@@ -3,14 +3,34 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
-export async function createSession() {
+export async function getOrCreateActiveSession() {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
   
-  // Get user role and limits
+  // 1. Check if there is already an active session
+  const { data: existingSession } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'in_progress')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (existingSession) {
+    // Fetch existing messages to resume the interview
+    const { data: messages } = await supabase
+      .from('messages')
+      .select('role, content')
+      .eq('session_id', existingSession.id)
+      .order('created_at', { ascending: true });
+      
+    return { session: existingSession, messages: messages || [], isResumed: true };
+  }
+  
+  // 2. Otherwise, create a new session
   let { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
   
-  // FALLBACK: If the Clerk webhook failed to create the user in Supabase, create it now!
   if (!user) {
     const clerkUser = await currentUser();
     const primaryEmail = clerkUser?.emailAddresses[0]?.emailAddress || 'unknown@example.com';
@@ -19,7 +39,7 @@ export async function createSession() {
       email: primaryEmail,
     }).select().single();
     
-    if (userErr) throw new Error(`Webhook failed, and fallback creation failed: ${userErr.message}`);
+    if (userErr) throw new Error(`Fallback creation failed: ${userErr.message}`);
     user = newUser;
   }
   
@@ -30,16 +50,47 @@ export async function createSession() {
   const { data: session, error } = await supabase.from('sessions').insert({
     user_id: userId,
     role: user?.target_role || 'Software Engineer',
-    difficulty: 'mid'
+    difficulty: 'mid',
+    status: 'in_progress'
   }).select().single();
   
-  if (error) {
-    console.error('Supabase error creating session:', error);
-    throw new Error(`Supabase error: ${error.message}`);
-  }
-  if (!session) throw new Error('Failed to create session');
+  if (error || !session) throw new Error('Failed to create session');
   
-  return session;
+  return { session, messages: [], isResumed: false };
+}
+
+export async function endSessionEarly(sessionId: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error('Unauthorized');
+  
+  await supabase.from('sessions').update({
+    status: 'completed',
+    ended_at: new Date().toISOString()
+  }).eq('id', sessionId);
+  
+  const { data: userData } = await supabase.from('users').select('sessions_used').eq('id', userId).single();
+  await supabase.from('users').update({
+    sessions_used: (userData?.sessions_used || 0) + 1
+  }).eq('id', userId);
+}
+
+export async function logViolation(sessionId: string, type: 'tab' | 'face') {
+  const column = type === 'tab' ? 'tab_violations' : 'face_violations';
+  
+  // Fetch current violation count
+  const { data: session } = await supabase
+    .from('sessions')
+    .select(column)
+    .eq('id', sessionId)
+    .single();
+    
+  if (session) {
+    const currentCount = (session as any)[column] || 0;
+    await supabase
+      .from('sessions')
+      .update({ [column]: currentCount + 1 })
+      .eq('id', sessionId);
+  }
 }
 
 export async function saveCandidateMessage(sessionId: string, content: string) {

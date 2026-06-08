@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createSession, saveCandidateMessage, uploadRecording } from './actions'
+import { getOrCreateActiveSession, saveCandidateMessage, uploadRecording, endSessionEarly, logViolation } from './actions'
+import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision'
 
 type Message = { role: string; content: string };
 
@@ -45,6 +46,53 @@ function WebcamFeed({ sessionId, isComplete }: { sessionId: string | null, isCom
       mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
     }
   }, [])
+
+  useEffect(() => {
+    let detector: FaceDetector;
+    let isRunning = true;
+    
+    async function initFaceDetector() {
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+      );
+      detector = await FaceDetector.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+          delegate: "GPU"
+        },
+        runningMode: "VIDEO"
+      });
+      
+      detectFaces();
+    }
+    
+    async function detectFaces() {
+      if (!videoRef.current || !isRunning || !detector) return;
+      if (videoRef.current.readyState >= 2) {
+        const detections = detector.detectForVideo(videoRef.current, performance.now());
+        const count = detections.detections.length;
+        
+        if (count !== 1) {
+            videoRef.current.style.borderColor = 'red';
+            // Log violation maximum once every 10 seconds to avoid spam
+            if (!videoRef.current.dataset.lastViolation || Date.now() - parseInt(videoRef.current.dataset.lastViolation) > 10000) {
+               videoRef.current.dataset.lastViolation = Date.now().toString();
+               if (sessionId) logViolation(sessionId, 'face').catch(console.error);
+            }
+        } else {
+            videoRef.current.style.borderColor = 'white';
+        }
+      }
+      if (isRunning) requestAnimationFrame(detectFaces);
+    }
+    
+    initFaceDetector();
+    
+    return () => {
+      isRunning = false;
+      detector?.close();
+    }
+  }, []);
   
   useEffect(() => {
     if (isComplete && sessionId && mediaRecorderRef.current?.state !== 'inactive') {
@@ -157,8 +205,36 @@ export default function InterviewPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [isComplete, setIsComplete] = useState(false)
   
+  const [tabViolations, setTabViolations] = useState(0)
+  const [faceViolations, setFaceViolations] = useState(0)
+  
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && !isComplete && session) {
+        setTabViolations(v => v + 1);
+        alert("⚠️ WARNING: Tab switching detected! Please remain on this tab. Violations will be recorded.");
+        logViolation(session.id, 'tab').catch(console.error);
+      }
+    };
+    
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isComplete && session) {
+        e.preventDefault();
+        e.returnValue = ''; // Required for Chrome to show warning
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isComplete, session]);
 
   useEffect(() => {
     startSession()
@@ -171,8 +247,13 @@ export default function InterviewPage() {
   async function startSession() {
     setIsLoading(true);
     try {
-      const newSession = await createSession();
+      const { session: newSession, messages: existingMsgs, isResumed } = await getOrCreateActiveSession();
       setSession(newSession);
+      
+      if (isResumed && existingMsgs.length > 0) {
+        setMessages(existingMsgs);
+        return; // Skip triggering the initial AI greeting if resuming!
+      }
       
       const res = await fetch('/api/interview', {
         method: 'POST',
@@ -248,6 +329,24 @@ export default function InterviewPage() {
     }
   }
 
+  async function handleEndInterview() {
+    if (!session || isLoading) return;
+    if (confirm("Are you sure you want to end the interview early? Your feedback will be generated based on the current progress.")) {
+      setIsLoading(true);
+      try {
+        await endSessionEarly(session.id);
+        setIsComplete(true);
+        setTimeout(() => {
+          router.push(`/report/${session.id}`);
+        }, 2000);
+      } catch (e) {
+        console.error(e);
+        alert("Failed to end interview early.");
+        setIsLoading(false);
+      }
+    }
+  }
+
   if (!session && !isLoading) return <div className="flex h-screen items-center justify-center font-bold text-gray-500">Loading session...</div>;
 
   return (
@@ -272,6 +371,13 @@ export default function InterviewPage() {
           <div className="text-sm font-bold text-blue-700 bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100">
             In Progress
           </div>
+          <button 
+            onClick={handleEndInterview} 
+            disabled={isLoading || isComplete}
+            className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-1.5 rounded-full border border-red-700 transition-colors disabled:opacity-50"
+          >
+            🛑 End Interview
+          </button>
         </div>
       </div>
       

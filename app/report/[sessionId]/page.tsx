@@ -56,9 +56,14 @@ export default async function ReportPage({ params }: { params: { sessionId: stri
                 <span className="text-xl font-extrabold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl whitespace-nowrap">{q.score}/10</span>
               </div>
               
-              <div className="mb-6">
+              <div className="mb-6 bg-gray-50 p-5 rounded-2xl border border-gray-100">
                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Your Answer</h4>
-                <p className="text-gray-700 italic bg-gray-50 p-4 rounded-xl">"{q.candidate_answer}"</p>
+                <p className="text-gray-700 italic mb-4">"{q.candidate_answer}"</p>
+                <div className="flex gap-4 mb-2">
+                  <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-bold text-gray-700">Sentiment: {q.sentiment_score}/10</div>
+                  <div className="bg-white px-3 py-1.5 rounded-lg border border-gray-200 text-sm font-bold text-gray-700">Confidence: {q.confidence_score}/10</div>
+                </div>
+                <p className="text-gray-600 text-sm"><span className="font-bold">Analysis:</span> {q.sentiment_analysis}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

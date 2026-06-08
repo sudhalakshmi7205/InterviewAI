@@ -4,29 +4,31 @@ import { currentUser } from '@clerk/nextjs/server'
 
 export const maxDuration = 60;
 
-const rateLimitMap = new Map<string, number[]>()
-
-function isRateLimited(userId: string): boolean {
-  const now = Date.now()
-  const timestamps = rateLimitMap.get(userId) || []
-  const recent = timestamps.filter(t => now - t < 60000) // last 60 seconds
+async function isRateLimited(sessionId: string): Promise<boolean> {
+  const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
   
-  if (recent.length >= 20) return true
-  
-  rateLimitMap.set(userId, [...recent, now])
-  return false
+  // Count how many messages the user has sent in this session in the last 60 seconds
+  const { count } = await supabase
+    .from('messages')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .eq('role', 'candidate')
+    .gte('created_at', oneMinuteAgo);
+    
+  return (count || 0) >= 10; // Max 10 messages per minute
 }
 
 export async function POST(req: Request) {
   const user = await currentUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (isRateLimited(user.id)) {
+  const { sessionId, messages, role, difficulty } = await req.json()
+
+  if (await isRateLimited(sessionId)) {
     return Response.json({ error: 'Too many requests' }, { status: 429 })
   }
 
-  const { sessionId, messages, role, difficulty } = await req.json()
-  
+
   try {
     const reply = await getInterviewerResponse(messages, role, difficulty)
     

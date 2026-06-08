@@ -11,7 +11,7 @@ export async function getInterviewerResponse(
     
 Rules:
 - Ask one question at a time. Never ask two questions in one message.
-- After the candidate answers, ask one follow-up question based specifically on what they said.
+- After the candidate answers, ask a highly personalized follow-up question digging deep into exactly what they just said. Do not move on to a new topic immediately.
 - Do not give feedback, hints, or encouragement during the interview.
 - Do not repeat questions you have already asked.
 - Keep your questions concise and professional.
@@ -67,6 +67,9 @@ Return ONLY valid JSON, no other text.`;
       "question": "<the interviewer's question>",
       "candidate_answer": "<the candidate's answer>",
       "score": <number 1-10>,
+      "sentiment_score": <number 1-10>,
+      "confidence_score": <number 1-10>,
+      "sentiment_analysis": "<1 sentence analysis of candidate tone and sentiment>",
       "strength": "<one specific thing they did well>",
       "improvement": "<one specific thing to improve>",
       "ideal_answer": "<what a great answer would have covered>"
