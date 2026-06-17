@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getActiveSession, saveCandidateMessage, uploadRecording, endSessionEarly, logViolation } from './actions'
 import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision'
+import { CodeEditor } from './CodeEditor'
 
 type Message = { role: string; content: string };
 
@@ -123,7 +124,7 @@ function WebcamFeed({ sessionId, isComplete }: { sessionId: string | null, isCom
       autoPlay 
       muted 
       playsInline
-      className="w-32 h-24 md:w-48 md:h-36 rounded-2xl object-cover fixed top-24 right-4 md:right-8 shadow-2xl border-4 border-white z-50"
+      className="w-32 h-24 md:w-48 md:h-36 rounded-2xl object-cover absolute top-6 right-6 shadow-2xl border-2 border-slate-700/50 z-50 transition-all duration-300 hover:scale-105"
     />
   )
 }
@@ -204,6 +205,7 @@ export default function InterviewPage() {
   const [session, setSession] = useState<any>(null)
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [isComplete, setIsComplete] = useState(false)
+  const [code, setCode] = useState<string>('# Write your code here\n\n')
   
   const [tabViolations, setTabViolations] = useState(0)
   const [faceViolations, setFaceViolations] = useState(0)
@@ -290,9 +292,12 @@ export default function InterviewPage() {
   }
 
   async function sendAnswer(transcript: string) {
-    if (!transcript.trim() || !session || isLoading) return;
+    if (!transcript.trim() && !code.trim() || !session || isLoading) return;
     
-    const newMessages = [...messages, { role: 'candidate', content: transcript }];
+    // Append the code block to the answer if the candidate wrote code
+    const fullAnswer = transcript + (code.trim() && code !== '# Write your code here\n\n' ? `\n\n[CANDIDATE CODE SUBMISSION]\n\`\`\`\n${code}\n\`\`\`` : '');
+    
+    const newMessages = [...messages, { role: 'candidate', content: fullAnswer }];
     setMessages(newMessages);
     setIsLoading(true);
 
@@ -356,68 +361,74 @@ export default function InterviewPage() {
   if (!session && !isLoading) return <div className="flex h-screen items-center justify-center font-bold text-gray-500">Loading session...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8 flex flex-col h-screen bg-gray-50 relative">
-      <WebcamFeed sessionId={session?.id} isComplete={isComplete} />
-      
-      <div className="bg-white rounded-t-3xl border-b border-gray-100 p-6 flex justify-between items-center shadow-sm z-10">
-        <div>
-          <h1 className="font-bold text-xl capitalize text-gray-900">{session?.role || 'Interview'}</h1>
-          <p className="text-sm text-gray-500 capitalize">Difficulty: {session?.difficulty || 'Mid'}</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
-            <input 
-              type="checkbox" 
-              checked={voiceEnabled} 
-              onChange={(e) => setVoiceEnabled(e.target.checked)} 
-              className="accent-blue-600 w-4 h-4"
-            />
-            AI Voice
-          </label>
-          <div className="text-sm font-bold text-blue-700 bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100">
-            In Progress
+    <div className="flex flex-col lg:flex-row h-screen bg-slate-950 p-4 gap-4">
+      {/* Left Column: Chat & Webcam */}
+      <div className="flex-1 flex flex-col min-w-[50%] h-full relative">
+        <WebcamFeed sessionId={session?.id} isComplete={isComplete} />
+        
+        <div className="glass-panel rounded-t-3xl border-b border-slate-700/50 p-6 flex justify-between items-center z-10 shadow-2xl">
+          <div>
+            <h1 className="font-bold text-xl capitalize text-white">{session?.role || 'Interview'}</h1>
+            <p className="text-sm text-slate-400 capitalize">Difficulty: {session?.difficulty || 'Mid'}</p>
           </div>
-          <button 
-            onClick={handleEndInterview} 
-            disabled={isLoading || isComplete}
-            className="text-sm font-bold text-white bg-red-600 hover:bg-red-700 px-4 py-1.5 rounded-full border border-red-700 transition-colors disabled:opacity-50"
-          >
-            🛑 End Interview
-          </button>
-        </div>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-white shadow-sm border-x border-gray-100 pb-48">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'interviewer' ? 'justify-start' : 'justify-end'}`}>
-            <div className={`p-4 rounded-3xl max-w-[80%] ${
-              msg.role === 'interviewer' 
-                ? 'bg-gray-100 text-gray-900 rounded-tl-sm' 
-                : 'bg-blue-600 text-white rounded-tr-sm shadow-md'
-            }`}>
-              <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-slate-300 glass-panel px-3 py-1.5 rounded-full border border-slate-600">
+              <input 
+                type="checkbox" 
+                checked={voiceEnabled} 
+                onChange={(e) => setVoiceEnabled(e.target.checked)} 
+                className="accent-blue-600 w-4 h-4"
+              />
+              AI Voice
+            </label>
+            <div className="text-sm font-bold text-yellow-400 bg-yellow-400/10 px-4 py-1.5 rounded-full border border-yellow-400/20 animate-pulse-glow">
+              In Progress
             </div>
+            <button 
+              onClick={handleEndInterview} 
+              disabled={isLoading || isComplete}
+              className="text-sm font-bold text-white bg-red-600/80 hover:bg-red-600 px-4 py-1.5 rounded-full border border-red-500/50 transition-colors disabled:opacity-50"
+            >
+              🛑 End
+            </button>
           </div>
-        ))}
-        {isLoading && messages.length > 0 && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 text-gray-500 p-4 rounded-3xl rounded-tl-sm flex items-center space-x-3">
-              <span className="text-sm font-medium">Interviewer is typing...</span>
-              <div className="flex space-x-1">
-                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 glass-panel rounded-b-none border-x border-slate-700/50 pb-48">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === 'interviewer' ? 'justify-start' : 'justify-end'}`}>
+              <div className={`p-5 rounded-3xl max-w-[90%] shadow-lg ${
+                msg.role === 'interviewer' 
+                  ? 'bg-slate-800 text-white rounded-tl-sm border border-slate-700' 
+                  : 'bg-blue-600 text-white rounded-tr-sm border border-blue-500'
+              }`}>
+                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
               </div>
             </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-      
-      <div className="fixed bottom-0 left-0 right-0 bg-white p-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] border-t border-gray-100 z-40">
-        <div className="max-w-4xl mx-auto">
+          ))}
+          {isLoading && messages.length > 0 && (
+            <div className="flex justify-start">
+              <div className="bg-slate-800 border border-slate-700 text-slate-400 p-5 rounded-3xl rounded-tl-sm flex items-center space-x-3 shadow-lg">
+                <span className="text-sm font-medium">Interviewer is typing...</span>
+                <div className="flex space-x-1">
+                  <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+        
+        <div className="absolute bottom-0 left-0 right-0 glass-panel p-4 rounded-b-3xl border-t border-slate-700/50 z-40">
           <SpeechInput onTranscript={sendAnswer} disabled={isLoading} />
         </div>
+      </div>
+
+      {/* Right Column: Monaco Code Editor */}
+      <div className="flex-1 min-w-[40%] h-[50vh] lg:h-full hidden lg:block">
+        <CodeEditor code={code} onChange={setCode} />
       </div>
     </div>
   )
