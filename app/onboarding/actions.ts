@@ -1,29 +1,25 @@
 'use server'
 
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
-import { redirect } from 'next/navigation';
 
-export async function saveRole(formData: FormData) {
+export async function completeOnboarding(role: string, level: string) {
   const { userId } = await auth();
-  if (!userId) {
-    throw new Error('Unauthorized');
-  }
-
-  const role = formData.get('role');
-  if (!role) {
-    throw new Error('Role is required');
-  }
-
-  const { error } = await supabase
-    .from('users')
-    .update({ target_role: role.toString() })
-    .eq('id', userId);
-
+  if (!userId) throw new Error('Unauthorized');
+  
+  const clerkUser = await currentUser();
+  const email = clerkUser?.emailAddresses[0]?.emailAddress || 'unknown@example.com';
+  
+  const combinedRole = level && role ? `${level} ${role}` : role || 'Software Engineer';
+  
+  const { error } = await supabase.from('users').upsert({
+    id: userId,
+    email: email,
+    target_role: combinedRole
+  });
+  
   if (error) {
-    console.error('Error saving role:', error);
-    throw new Error('Failed to save role');
+    console.error('Onboarding Error:', error);
+    throw new Error('Failed to save profile');
   }
-
-  redirect('/dashboard');
 }

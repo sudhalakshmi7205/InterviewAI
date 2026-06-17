@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { StartInterviewButton } from './StartInterviewButton';
+import { DashboardCharts } from './DashboardCharts';
 
 function avgScore(sessions: any[]) {
   if (!sessions || sessions.length === 0) return 0;
@@ -97,6 +98,9 @@ export default async function DashboardPage() {
         
         {/* Start button */}
         <StartInterviewButton limitReached={limitReached} />
+
+        {/* Analytics Charts */}
+        <DashboardCharts sessions={sessions || []} />
         
         {/* Past sessions */}
         <div>
@@ -105,10 +109,20 @@ export default async function DashboardPage() {
             <div className="h-px bg-slate-800 flex-1 ml-4" />
           </h2>
           {(!sessions || sessions.length === 0) && (
-            <div className="glass-panel rounded-3xl p-12 text-center">
-              <div className="text-4xl mb-4 animate-float">🚀</div>
-              <h3 className="text-xl font-bold text-white mb-2">No sessions yet</h3>
-              <p className="text-slate-400">Your interview history will appear here. Start your first session above!</p>
+            <div className="glass-panel rounded-3xl p-16 text-center border border-slate-700/50 shadow-2xl relative overflow-hidden group">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] group-hover:bg-blue-500/20 transition-all duration-500"></div>
+              <div className="relative z-10">
+                <div className="w-24 h-24 bg-slate-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-800 shadow-inner">
+                  <span className="text-5xl animate-float">🚀</span>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">Your Journey Begins Here</h3>
+                <p className="text-slate-400 max-w-md mx-auto mb-8 text-lg">
+                  You haven't completed any interviews yet. Click the shiny button above to start your first highly-realistic technical assessment.
+                </p>
+                <div className="text-blue-500 animate-bounce">
+                  ↑ Start Interview ↑
+                </div>
+              </div>
             </div>
           )}
           {sessions?.map(session => (

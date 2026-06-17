@@ -358,7 +358,23 @@ export default function InterviewPage() {
     }
   }
 
-  if (!session && !isLoading) return <div className="flex h-screen items-center justify-center font-bold text-gray-500">Loading session...</div>;
+  if (!session && !isLoading) {
+    return (
+      <div className="flex flex-col lg:flex-row h-screen bg-slate-950 p-4 gap-4">
+        <div className="flex-1 flex flex-col min-w-[50%] h-full relative">
+          <div className="w-32 h-24 md:w-48 md:h-36 rounded-2xl bg-slate-900 absolute top-6 right-6 border-2 border-slate-800 animate-pulse z-50"></div>
+          <div className="glass-panel rounded-t-3xl border-b border-slate-800 p-6 flex justify-between items-center z-10 h-24 animate-pulse"></div>
+          <div className="flex-1 glass-panel rounded-b-none border-x border-slate-800 p-8 space-y-6">
+            <div className="w-3/4 h-32 bg-slate-900 rounded-3xl rounded-tl-sm animate-pulse"></div>
+            <div className="w-1/2 h-24 bg-blue-900/20 rounded-3xl rounded-tr-sm ml-auto animate-pulse"></div>
+            <div className="w-2/3 h-40 bg-slate-900 rounded-3xl rounded-tl-sm animate-pulse"></div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 glass-panel p-4 rounded-b-3xl h-32 animate-pulse"></div>
+        </div>
+        <div className="flex-1 min-w-[40%] h-full hidden lg:block bg-slate-900 rounded-3xl border border-slate-800 animate-pulse"></div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-slate-950 p-4 gap-4">
