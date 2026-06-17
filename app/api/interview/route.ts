@@ -22,15 +22,14 @@ export async function POST(req: Request) {
   const user = await currentUser()
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { sessionId, messages, role, difficulty } = await req.json()
+  const { sessionId, messages, role, difficulty, resumeText } = await req.json()
 
   if (await isRateLimited(sessionId)) {
     return Response.json({ error: 'Too many requests' }, { status: 429 })
   }
 
-
   try {
-    const reply = await getInterviewerResponse(messages, role, difficulty)
+    const reply = await getInterviewerResponse(messages, role, difficulty, resumeText)
     
     // Save AI message to database
     await supabase.from('messages').insert({

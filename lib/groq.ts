@@ -5,9 +5,10 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 export async function getInterviewerResponse(
   messages: { role: string; content: string }[],
   role: string,
-  difficulty: string
+  difficulty: string,
+  resumeText: string = ""
 ) {
-  const systemInstruction = `You are a senior interviewer conducting a ${role} interview at ${difficulty} level.
+  let systemInstruction = `You are a senior interviewer conducting a ${role} interview at ${difficulty} level.
     
 Rules:
 - Ask one question at a time. Never ask two questions in one message.
@@ -16,6 +17,10 @@ Rules:
 - Do not repeat questions you have already asked.
 - Keep your questions concise and professional.
 - After exactly 5 candidate responses, say only this: "That concludes our interview. Thank you for your time."`;
+
+  if (resumeText.trim().length > 0) {
+    systemInstruction += `\n\nCRITICAL INSTRUCTION: The candidate's resume is attached below. You MUST read it carefully and ask highly specific, probing technical questions based on the technologies and past experiences listed in their resume.\n\nRESUME TEXT:\n${resumeText}`;
+  }
 
   const chatMessages: any[] = [{ role: 'system', content: systemInstruction }];
   

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { getOrCreateActiveSession, saveCandidateMessage, uploadRecording, endSessionEarly, logViolation } from './actions'
+import { getActiveSession, saveCandidateMessage, uploadRecording, endSessionEarly, logViolation } from './actions'
 import { FaceDetector, FilesetResolver } from '@mediapipe/tasks-vision'
 
 type Message = { role: string; content: string };
@@ -247,7 +247,11 @@ export default function InterviewPage() {
   async function startSession() {
     setIsLoading(true);
     try {
-      const { session: newSession, messages: existingMsgs, isResumed } = await getOrCreateActiveSession();
+      const { session: newSession, messages: existingMsgs, isResumed } = await getActiveSession();
+      if (!newSession) {
+        router.push('/dashboard');
+        return;
+      }
       setSession(newSession);
       
       if (isResumed && existingMsgs.length > 0) {
@@ -262,7 +266,8 @@ export default function InterviewPage() {
           sessionId: newSession.id,
           messages: [],
           role: newSession.role,
-          difficulty: newSession.difficulty
+          difficulty: newSession.difficulty,
+          resumeText: newSession.resume_text || ''
         })
       });
       if (!res.ok) {
@@ -301,7 +306,8 @@ export default function InterviewPage() {
           sessionId: session.id,
           messages: newMessages,
           role: session.role,
-          difficulty: session.difficulty
+          difficulty: session.difficulty,
+          resumeText: session.resume_text || ''
         })
       });
       if (!res.ok) {

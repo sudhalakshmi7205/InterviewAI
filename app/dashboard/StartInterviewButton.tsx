@@ -3,15 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { UpgradeModal } from './UpgradeModal'
+import { SetupInterviewModal } from './SetupInterviewModal'
 
 export function StartInterviewButton({ limitReached }: { limitReached: boolean }) {
-  const [showModal, setShowModal] = useState(false)
-  const router = useRouter()
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showSetupModal, setShowSetupModal] = useState(false)
   
   return (
     <>
       <button 
-        onClick={() => limitReached ? setShowModal(true) : router.push('/interview')}
+        onClick={() => limitReached ? setShowUpgradeModal(true) : setShowSetupModal(true)}
         className="relative block w-full group overflow-hidden bg-slate-900 border border-slate-700/50 hover:border-blue-500/50 transition-all duration-300 text-white font-bold text-center py-6 rounded-2xl text-xl shadow-[0_0_40px_-10px_rgba(59,130,246,0.3)] hover:shadow-[0_0_60px_-10px_rgba(59,130,246,0.5)] mb-12"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -20,7 +21,8 @@ export function StartInterviewButton({ limitReached }: { limitReached: boolean }
           Start New Interview <span className="group-hover:translate-x-1 transition-transform">→</span>
         </span>
       </button>
-      <UpgradeModal isOpen={showModal} onClose={() => setShowModal(false)} />
+      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+      <SetupInterviewModal isOpen={showSetupModal} onClose={() => setShowSetupModal(false)} />
     </>
   )
 }

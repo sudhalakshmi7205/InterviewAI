@@ -3,11 +3,10 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
-export async function getOrCreateActiveSession() {
+export async function getActiveSession() {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
   
-  // 1. Check if there is already an active session
   const { data: existingSession } = await supabase
     .from('sessions')
     .select('*')
@@ -17,20 +16,24 @@ export async function getOrCreateActiveSession() {
     .limit(1)
     .single();
 
-  if (existingSession) {
-    // Fetch existing messages to resume the interview
-    const { data: messages } = await supabase
-      .from('messages')
-      .select('role, content')
-      .eq('session_id', existingSession.id)
-      .order('created_at', { ascending: true });
-      
-    return { session: existingSession, messages: messages || [], isResumed: true };
+  if (!existingSession) {
+    return { session: null, messages: [], isResumed: false };
   }
-  
-  // 2. Otherwise, create a new session
+
+  const { data: messages } = await supabase
+    .from('messages')
+    .select('role, content')
+    .eq('session_id', existingSession.id)
+    .order('created_at', { ascending: true });
+    
+  return { session: existingSession, messages: messages || [], isResumed: true };
+}
+
+export async function createNewSession(role: string, difficulty: string, resumeText: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error('Unauthorized');
+
   let { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
-  
   if (!user) {
     const clerkUser = await currentUser();
     const primaryEmail = clerkUser?.emailAddresses[0]?.emailAddress || 'unknown@example.com';
@@ -38,7 +41,6 @@ export async function getOrCreateActiveSession() {
       id: userId,
       email: primaryEmail,
     }).select().single();
-    
     if (userErr) throw new Error(`Fallback creation failed: ${userErr.message}`);
     user = newUser;
   }
@@ -46,17 +48,23 @@ export async function getOrCreateActiveSession() {
   if (user?.plan === 'free' && (user?.sessions_used || 0) >= 3) {
     throw new Error('LIMIT_REACHED');
   }
+
+  // End any currently active sessions before starting a new one
+  await supabase.from('sessions').update({ status: 'completed' })
+    .eq('user_id', userId)
+    .eq('status', 'in_progress');
   
   const { data: session, error } = await supabase.from('sessions').insert({
     user_id: userId,
-    role: user?.target_role || 'Software Engineer',
-    difficulty: 'mid',
+    role: role || user?.target_role || 'Software Engineer',
+    difficulty: difficulty || 'mid',
+    resume_text: resumeText,
     status: 'in_progress'
   }).select().single();
   
   if (error || !session) throw new Error('Failed to create session');
   
-  return { session, messages: [], isResumed: false };
+  return session;
 }
 
 export async function endSessionEarly(sessionId: string) {
