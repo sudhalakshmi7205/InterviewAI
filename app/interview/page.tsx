@@ -358,6 +358,8 @@ export default function InterviewPage() {
     }
   }
 
+  const [hasStartedInteraction, setHasStartedInteraction] = useState(false)
+
   if (!session && !isLoading) {
     return (
       <div className="flex flex-col lg:flex-row h-screen bg-slate-950 p-4 gap-4">
@@ -377,7 +379,30 @@ export default function InterviewPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-slate-950 p-4 gap-4">
+    <div className="flex flex-col lg:flex-row h-screen bg-slate-950 p-4 gap-4 relative">
+      
+      {/* Explicit User Interaction Overlay to unlock Audio */}
+      {!hasStartedInteraction && session && (
+        <div className="absolute inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center">
+          <div className="glass-panel p-10 rounded-3xl text-center max-w-md border border-slate-700 shadow-2xl">
+            <h2 className="text-2xl font-bold text-white mb-4">Ready to Begin?</h2>
+            <p className="text-slate-400 mb-8">Clicking start will unlock your browser's audio engine so you can hear the interviewer.</p>
+            <button 
+              onClick={() => {
+                setHasStartedInteraction(true);
+                // If we are resuming, and the last message was from the interviewer, speak it!
+                if (messages.length > 0 && messages[messages.length - 1].role === 'interviewer' && voiceEnabled) {
+                   speakText(messages[messages.length - 1].content);
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-8 rounded-xl w-full transition-colors shadow-lg shadow-blue-500/30"
+            >
+              Start Interview Audio
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Left Column: Chat & Webcam */}
       <div className="flex-1 flex flex-col min-w-[50%] h-full relative">
         <WebcamFeed sessionId={session?.id} isComplete={isComplete} />
@@ -435,6 +460,15 @@ export default function InterviewPage() {
             </div>
           )}
           <div ref={messagesEndRef} />
+          
+          {messages.length > 0 && !isLoading && messages[messages.length - 1].role === 'interviewer' && (
+            <div className="flex justify-center mt-8 opacity-50">
+              <div className="bg-slate-800 text-slate-400 text-sm px-4 py-2 rounded-full flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                AI is waiting for your response. Click "Start Speaking" below.
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="absolute bottom-0 left-0 right-0 glass-panel p-4 rounded-b-3xl border-t border-slate-700/50 z-40">

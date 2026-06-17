@@ -29,7 +29,7 @@ export async function getActiveSession() {
   return { session: existingSession, messages: messages || [], isResumed: true };
 }
 
-export async function createNewSession(role: string, difficulty: string, resumeText: string) {
+export async function createNewSession(role: string, difficulty: string) {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
 
@@ -58,7 +58,7 @@ export async function createNewSession(role: string, difficulty: string, resumeT
     user_id: userId,
     role: role || user?.target_role || 'Software Engineer',
     difficulty: difficulty || 'mid',
-    resume_text: resumeText,
+    resume_text: user?.resume_text || '',
     status: 'in_progress'
   }).select().single();
   
